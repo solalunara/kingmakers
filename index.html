@@ -3,13 +3,210 @@
 
     <head>
         <title>Kingmakers Spacetime Graph</title>
-        <style>
-            .titus { color: green };
-        </style>
     </head>
 
-    <body style="background-color: #4a4a52">
-    
+    <body style="text-align:center; background-color:#826021;" onload="draw()">
+        <button type="button" onclick="SetBlakeGuard()">Blakeguard</button>
+        <button type="button" onclick="SetBrinGuard()">Bringuard</button>
+        <div>
+            <textarea rows=1 style="resize:none; background-color:#993333; color:white">Rasroth</textarea>
+            <textarea rows=1 style="resize:none; background-color:#003366; color:white">Titus</textarea>
+            <textarea rows=1 style="resize:none; background-color:#003300; color:white">Astraea</textarea>
+            <textarea rows=1 style="resize:none; background-color:#cc0000; color:white">Lyr</textarea>
+            <textarea rows=1 style="resize:none; background-color:#006699; color:white">Jude</textarea>
+            <textarea rows=1 style="resize:none; background-color:#33cc33; color:white">Vega</textarea>
+            <textarea rows=1 style="resize:none; background-color:#ffffff;">Erufr</textarea>
+        </div>
+        <div>
+            <canvas width="1500" height="8000" id="graph" style="display:inline-block"></canvas>
+        </div>
+        <script>
+            const Events = [
+                { name: 'Rasroth Debt Magic', time: 0 },
+                { name: 'Dessication', time: 28 },
+                { name: 'Complete Darkness', time: 56 },
+                { name: 'Death of Titus and Astraea', time: 168 },
+                { name: 'Death of the King', time: 336 },
+                { name: 'The Sun Never Sets on the British Empire', time: 350 },
+            ];
+
+            const Start = Events.find( ( object ) => { return object.name === 'Death of the King'; } ).time;
+
+            const Characters = {
+                Rasroth: [
+                    { place: 'bringuard', begin: 0, end: Start + 2 },
+                    { place: 'bringuard', begin: Start + 6, end: Start + 6.1 },
+                    { place: 'blakeguard', begin: Start + 2, end: Start + 2.1 },
+                ],
+                Titus: [
+                    { place: 'bringuard', begin: 0, end: Events.find( ( object ) => { return object.name === 'Death of Titus and Astraea'; } ).time },
+                    { place: 'bringuard', begin: Start, end: Start + 0.1 },
+                    { place: 'unknown', begin: 999, end: Start },
+                ],
+                Astraea: [
+                    { place: 'bringuard', begin: 0, end: Events.find( ( object ) => { return object.name === 'Death of Titus and Astraea'; } ).time },
+                    { place: 'bringuard', begin: Start, end: Start + 2 },
+                    { place: 'bringuard', begin: Start, end: Start + .1 },
+                    { place: 'bringuard', begin: Start + 6, end: Start + 6.1 },
+                    { place: 'blakeguard', begin: Start + 2, end: Start + 2.1 },
+                ],
+                Lyr: [
+                    { place: 'blakeguard', begin: 0, end: Start },
+                    { place: 'bringuard', begin: Start, end: Start + .1 },
+                    { place: 'blakeguard', begin: Start + .1, end: Start + 1 },
+                    { place: 'blakeguard', begin: Start + 2, end: Start + 2.5 },
+                    { place: 'blakeguard', begin: Start - 28 * 4, end: Start - 28 * 4 + .1 },
+                    { place: 'blakeguard', begin: Start + 2.6, end: Start + 2.7 },
+                    { place: 'bringuard', begin: Start + 2.7, end: Start + 2.8 },
+                ],
+                Jude: [
+                    { place: 'blakeguard', begin: 0, end: Start },
+                    { place: 'bringuard', begin: Start, end: Start + .1 },
+                    { place: 'blakeguard', begin: Start + .1, end: Start + 1 },
+                    { place: 'blakeguard', begin: Start + 2, end: Start + 2.8 },
+                ],
+                Vega: [
+                    { place: 'blakeguard', begin: 0, end: Start },
+                    { place: 'bringuard', begin: Start, end: Start + .1 },
+                    { place: 'blakeguard', begin: Start + .1, end: Start + 1 },
+                    { place: 'blakeguard', begin: Start + 2, end: Start + 2.5 },
+                    { place: 'blakeguard', begin: Start - 28 * 4, end: Start - 28 * 4 + .2 },
+                    { place: 'blakeguard', begin: Start + 2.6, end: Start + 2.8 },
+                ],
+                Erufr: [
+                    { place: 'bringuard', begin: Start, end: Start + 1 },
+                    { place: 'unknown', begin: Start + 1, end: Start + 1.1 },
+                    { place: 'blakeguard', begin: Start + 1.5, end: Start + 1.6 },
+                    { place: 'bringuard', begin: Start + 1.5, end: Start + 2 },
+                    { place: 'blakeguard', begin: Start + 6, end: Start + 6.1 },
+                ],
+            }
+
+            const Loc = { BlakeGuard: false, BrinGuard: true };
+
+            function SetBlakeGuard()
+            {
+                Loc.BlakeGuard = true;
+                Loc.BrinGuard = false;
+                draw();
+            }
+            function SetBrinGuard()
+            {
+                Loc.BrinGuard = true;
+                Loc.BlakeGuard = false;
+                draw();
+            }
+
+
+            function draw()
+            {
+                const canvas = document.getElementById( 'graph' );
+                const c = canvas.getContext( '2d' );
+
+                const CanvasHeight = 8000;
+                const Scale = CanvasHeight / ( Events[ Events.length - 1 ].time + 1 );
+
+                let LongestLength = -1;
+                for ( let i = 0; i < Events.length; ++i )
+                {
+                    if ( Events[ i ].name.length > LongestLength )
+                        LongestLength = Events[ i ].name.length;
+                }
+
+                //time axis
+                let FontSize = 20;
+                c.lineWidth = 4;
+                c.strokeStyle = '#000000';
+                c.fillStyle = '#8a8a82';
+                c.miterLimit = 2;
+                c.font = `${FontSize}px serif`;
+                for ( let i = 0; i < Events.length; ++i )
+                {
+                    c.strokeText( Events[ i ].name, ( LongestLength - Events[ i ].name.length ) * FontSize / 2, CanvasHeight - Events[ i ].time * Scale );
+                    c.fillText( Events[ i ].name, ( LongestLength - Events[ i ].name.length ) * FontSize / 2, CanvasHeight - Events[ i ].time * Scale );
+                }
+
+                c.fillStyle = '#000000';
+                let TimeAxisX = LongestLength * FontSize / 2 + 100;
+                c.fillRect( TimeAxisX, 0, 10, CanvasHeight );
+
+                c.fillStyle = '#8a8a82';
+                for ( let i = 0; i < CanvasHeight / Scale; ++i ) 
+                {
+                    if ( i < 336 )
+                    {
+                        if ( i % 10 == 0 )
+                        {
+                            c.strokeText( i.toString(), TimeAxisX - 40, CanvasHeight - i * Scale );
+                            c.fillText( i.toString(), TimeAxisX - 40, CanvasHeight - i * Scale );
+                        }
+                    }
+                    else
+                    {
+                        c.strokeText( i.toString(), TimeAxisX - 40, CanvasHeight - i * Scale );
+                        c.fillText( i.toString(), TimeAxisX - 40, CanvasHeight - i * Scale );
+                    }
+                }
+
+                //segments
+                for ( const Character in Characters )
+                {
+                    let Index = -1;
+                    switch ( Character )
+                    {
+                        case 'Rasroth':
+                            c.fillStyle = '#993333';
+                            Index = 0;
+                            break;
+                        case 'Titus':
+                            c.fillStyle = '#003366';
+                            Index = 1;
+                            break;
+                        case 'Astraea':
+                            c.fillStyle = '#003300';
+                            Index = 2;
+                            break;
+                        case 'Lyr':
+                            c.fillStyle = '#cc0000';
+                            Index = 3;
+                            break;
+                        case 'Jude':
+                            c.fillStyle = '#006699';
+                            Index = 4;
+                            break;
+                        case 'Vega':
+                            c.fillStyle = '#33cc33';
+                            Index = 5;
+                            break;
+                        case 'Erufr':
+                            c.fillStyle = '#ffffff';
+                            Index = 6;
+                            break;
+                    }
+                    console.info( Character + ' ' + Characters[ Character ].length );
+                    for ( let i = 0; i < Characters[ Character ].length; ++i )
+                    {
+                        console.info( '\t' + Character + ' ' + Characters[ Character ][ i ].begin );
+                        const Segment = Characters[ Character ][ i ];
+                        if ( Segment.place === 'bringuard' )
+                        {
+                            if ( Loc.BrinGuard )
+                                c.fillRect( TimeAxisX + 30 + Index * 30, CanvasHeight - ( Segment.end * Scale ), 10, ( Segment.end - Segment.begin ) * Scale );
+                            else
+                                c.clearRect( TimeAxisX + 30 + Index * 30, CanvasHeight - ( Segment.end * Scale ), 10, ( Segment.end - Segment.begin ) * Scale );
+                        }
+                        if ( Segment.place === 'blakeguard' )
+                        {
+                            if ( Loc.BlakeGuard )
+                                c.fillRect( TimeAxisX + 30 + Index * 30, CanvasHeight - ( Segment.end * Scale ), 10, ( Segment.end - Segment.begin ) * Scale );
+                            else
+                                c.clearRect( TimeAxisX + 30 + Index * 30, CanvasHeight - ( Segment.end * Scale ), 10, ( Segment.end - Segment.begin ) * Scale );
+                        }
+                    }
+                }
+
+            }
+        </script>
     </body>
 
 </html>
