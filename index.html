@@ -5,7 +5,7 @@
         <title>Kingmakers Spacetime Graph</title>
     </head>
 
-    <body style="text-align:center; background-color:#826021;" onload="draw();drawTopLabel()">
+    <body style="text-align:center; background-color:#826021;" onload="draw()">
         <button class="button" onclick="toggleConnections()">Toggle Connections</button>
         <div>
             <textarea rows=1 style="resize:none; background-color:#993333; color:white">Rasroth</textarea>
@@ -16,21 +16,28 @@
             <textarea rows=1 style="resize:none; background-color:#33cc33; color:white">Vega</textarea>
             <textarea rows=1 style="resize:none; background-color:#ffffff;">Erufr</textarea>
         </div>
-        <div>
-            <canvas width="1800" height="50" id="topLabel" style="display:inline-block"></canvas>
-        </div>
-        <div>
-            <canvas width="1800" height="16000" id="graph" style="display:inline-block"></canvas>
+        <div style="display:inline-block">
+            <canvas style="margin-bottom:-5px" width="1800" height="50" id="topLabel"></canvas>
+            <canvas style="margin-bottom:-6px" width="1800" height="800" id="show"></canvas>
+            <canvas style="margin-bottom:-5px" width="1800" height="2000" id="prologue"></canvas>
         </div>
         <script>
-            const Events = [
-                { name: 'Rasroth Debt Magic', time: 0 },
-                { name: 'Dessication', time: 28 },
-                { name: 'Complete Darkness', time: 56 },
-                { name: 'Death of Titus and Astraea', time: 168 },
-                { name: 'Death of the King', time: 336 },
-                { name: 'The Sun Never Sets on the British Empire', time: 350 },
-            ];
+            function days( d ) { return d; }
+            // 1 week -> 7 days
+            function weeks( w ) { return w * 7; }
+            // 1 month -> 4 weeks -> 28 days
+            function months( m ) { return weeks( m * 4 ); }
+            // 1 year -> 12 months -> 52 weeks -> 336 days
+            function years( y ) { return months( y * 12 ); }
+
+            const Events = [];
+            Events.push( { name: 'Rasroth Debt Magic', time: 0 } );
+            Events.push( { name: 'Dessication', time: timeOf( 'Rasroth Debt Magic' ) + years( 2 ) } );
+            Events.push( { name: 'Complete Darkness', time: timeOf( 'Dessication' ) + months( 1 ) } );
+            Events.push( { name: 'Death of Titus and Astraea', time: timeOf( 'Complete Darkness' ) + months( 4 ) } );
+            Events.push( { name: 'Death of the King', time: timeOf( 'Death of Titus and Astraea' ) + months( 6 ) } );
+            Events.push( { name: 'The Sun Never Sets on the British Empire', time: timeOf( 'Death of the King' ) + weeks( 2 ) } );
+                
 
             function timeOf( name )
             {
@@ -317,25 +324,42 @@
                 }
             }
 
-            let TimeAxisX = 0;
-            function drawTopLabel()
+            const canvasNames = [ 'topLabel', 'show', 'prologue' ];
+
+            let canvas = {};
+
+            for ( let i = 0; i < canvasNames.length; ++i )
             {
-                const canvas = document.getElementById( 'topLabel' );
-                const c = canvas.getContext( '2d' );
-
-                let FontSize = 20;
-                c.lineWidth = 4;
-                c.strokeStyle = '#000000';
-                c.fillStyle = '#8a8a82';
-                c.miterLimit = 2;
-                c.font = `${FontSize}px serif`;
-
-                for ( let i = 0; i < Locations.length; ++i )
+                canvas[ canvasNames[ i ] ] = { 
+                    id: document.getElementById( canvasNames[ i ] ),
+                    range: { begin: -1, end: -1 }
+                };
+                switch ( canvasNames[ i ] )
                 {
-                    c.strokeText( Locations[ i ], TimeAxisX + 30 + Sep * i, 25 );
-                    c.fillText( Locations[ i ], TimeAxisX + 30 + Sep * i, 25 );
+                    case 'show':
+                        canvas.show.range.begin = Start;
+                        canvas.show.range.end = Events[ Events.length - 1 ].time;
+                        break;
+
+                    case 'prologue':
+                        canvas.prologue.range.begin = 0;
+                        canvas.prologue.range.end = Start;
+                        break;
                 }
+                canvas[ canvasNames[ i ] ].height = canvas[ canvasNames[ i ] ].id.clientHeight;
+                canvas[ canvasNames[ i ] ].scale = canvas[ canvasNames[ i ] ].height / ( canvas[ canvasNames[ i ] ].range.end - canvas[ canvasNames[ i ] ].range.begin + 1 );
+                canvas[ canvasNames[ i ] ].c = canvas[ canvasNames[ i ] ].id.getContext( '2d' );
             }
+
+            let LongestLength = -1;
+            for ( let i = 0; i < Events.length; ++i )
+            {
+                if ( Events[ i ].name.length > LongestLength )
+                    LongestLength = Events[ i ].name.length;
+            }
+
+            const FontSize = 20;
+            const TimeAxisX = LongestLength * FontSize / 2 + 100;
 
             let displayConnections = true;
 
@@ -347,131 +371,140 @@
 
             function draw()
             {
-                const canvas = document.getElementById( 'graph' );
-                const c = canvas.getContext( '2d' );
-
-                const CanvasHeight = canvas.clientHeight;
-                const Scale = CanvasHeight / ( Events[ Events.length - 1 ].time + 1 );
-
-                c.clearRect( 0, 0, canvas.clientWidth, canvas.clientHeight );
-
-                let LongestLength = -1;
-                for ( let i = 0; i < Events.length; ++i )
+                for ( canvasName in canvas )
                 {
-                    if ( Events[ i ].name.length > LongestLength )
-                        LongestLength = Events[ i ].name.length;
-                }
+                    const c = canvas[ canvasName ].c;
+                    c.clearRect( 0, 0, canvas.clientWidth, canvas.clientHeight );
+                    const CanvasHeight = canvas[ canvasName ].height;
+                    const Scale = canvas[ canvasName ].scale;
+                    const range = canvas[ canvasName ].range;
 
-                //time axis
-                let FontSize = 20;
-                c.lineWidth = 4;
-                c.strokeStyle = '#000000';
-                c.fillStyle = '#8a8a82';
-                c.miterLimit = 2;
-                c.font = `${FontSize}px serif`;
-                for ( let i = 0; i < Events.length; ++i )
-                {
-                    c.strokeText( Events[ i ].name, ( LongestLength - Events[ i ].name.length ) * FontSize / 2, CanvasHeight - Events[ i ].time * Scale );
-                    c.fillText( Events[ i ].name, ( LongestLength - Events[ i ].name.length ) * FontSize / 2, CanvasHeight - Events[ i ].time * Scale );
-                }
+                    //time axis bar
+                    c.lineWidth = 4;
+                    c.fillStyle = '#000000';
+                    c.fillRect( TimeAxisX, 0, 10, CanvasHeight );
 
-                c.fillStyle = '#000000';
-                TimeAxisX = LongestLength * FontSize / 2 + 100;
-                c.fillRect( TimeAxisX, 0, 10, CanvasHeight );
+                    //settings for graph labels
+                    c.strokeStyle = '#000000';
+                    c.fillStyle = '#8a8a82';
+                    c.miterLimit = 2;
+                    c.font = `${FontSize}px serif`;
 
-                c.fillStyle = '#8a8a82';
-                for ( let i = 0; i < CanvasHeight / Scale; ++i ) 
-                {
-                    if ( i < 336 )
+                    if ( canvasName === 'topLabel' )
                     {
-                        if ( i % 10 == 0 )
+                        for ( let i = 0; i < Locations.length; ++i )
                         {
-                            c.strokeText( i.toString(), TimeAxisX - 40, CanvasHeight - i * Scale );
-                            c.fillText( i.toString(), TimeAxisX - 40, CanvasHeight - i * Scale );
+                            c.strokeText( Locations[ i ], TimeAxisX + 30 + Sep * i, 25 );
+                            c.fillText( Locations[ i ], TimeAxisX + 30 + Sep * i, 25 );
                         }
+                        continue;
                     }
-                    else
-                    {
-                        c.strokeText( i.toString(), TimeAxisX - 40, CanvasHeight - i * Scale );
-                        c.fillText( i.toString(), TimeAxisX - 40, CanvasHeight - i * Scale );
-                    }
-                }
 
-                let Marks = [];
-
-                function IsInMark( segment )
-                {
-                    for ( let i = 0; i < Marks.length; ++i )
+                    //write events to the time axis
+                    const EventsInRange = Events.filter( ( object ) => { return object.time >= range.begin && object.time <= range.end; } );
+                    for ( let i = 0; i < EventsInRange.length; ++i )
                     {
-                        if ( segment.x == Marks[ i ].x && segment.y.begin < Marks[ i ].y.end && segment.y.end > Marks[ i ].y.begin )
-                            return true;
+                        c.strokeText( EventsInRange[ i ].name, ( LongestLength - EventsInRange[ i ].name.length ) * FontSize / 2, CanvasHeight - ( EventsInRange[ i ].time - range.begin ) * Scale );
+                        c.fillText( EventsInRange[ i ].name, ( LongestLength - EventsInRange[ i ].name.length ) * FontSize / 2, CanvasHeight - ( EventsInRange[ i ].time - range.begin ) * Scale );
                     }
-                    return false;
-                }
 
-                //segments
-                for ( let i = 0; i < Characters.length; ++i )
-                {
-                    switch ( Characters[ i ].name )
+                    //add helpful time markings on left side
+                    for ( let i = 0; i < CanvasHeight / Scale; ++i ) 
                     {
-                        case 'Rasroth':
-                            c.fillStyle = '#993333';
-                            c.strokeStyle = '#993333'; 
-                            break;
-                        case 'Titus':
-                            c.fillStyle = '#003366';
-                            c.strokeStyle = '#003366'; 
-                            break;
-                        case 'Astraea':
-                            c.fillStyle = '#003300';
-                            c.strokeStyle = '#003300'; 
-                            break;
-                        case 'Lyr':
-                            c.fillStyle = '#cc0000';
-                            c.strokeStyle = '#cc0000'; 
-                            break;
-                        case 'Jude':
-                            c.fillStyle = '#006699';
-                            c.strokeStyle = '#006699'; 
-                            break;
-                        case 'Vega':
-                            c.fillStyle = '#33cc33';
-                            c.strokeStyle = '#33cc33'; 
-                            break;
-                        case 'Erufr':
-                            c.fillStyle = '#ffffff';
-                            c.strokeStyle = '#ffffff'; 
-                            break;
-                    }
-                    for ( let j = 0; j < Characters[ i ].segments.length; ++j )
-                    {
-                        let x = getLocationX( Characters[ i ].segments[ j ].place );
-                        while ( IsInMark( { x: x, y: { begin: Characters[ i ].segments[ j ].begin, end: Characters[ i ].segments[ j ].end } } ) )
+                        if ( canvasName === 'prologue' )
                         {
-                            x += 25;
-                        }
-                        c.fillRect( TimeAxisX + 30 + x, CanvasHeight - ( Characters[ i ].segments[ j ].end * Scale ), 20, ( Characters[ i ].segments[ j ].end - Characters[ i ].segments[ j ].begin ) * Scale );
-                        Marks.push( { name: Characters[ i ].name, n: j, x: x, y: { begin: Characters[ i ].segments[ j ].begin, end: Characters[ i ].segments[ j ].end } } );
-                    }
-                    if ( displayConnections )
-                    {
-                        let segments = Marks.filter( ( object ) => { return object.name === Characters[ i ].name; } );
-                        for ( let j = 0; j < Characters[ i ].links.length; ++j )
-                        {
-                            c.lineWidth = Characters[ i ].links[ j ].strength;
-                            for ( let k = 0; k < segments.length; ++k )
+                            if ( i % 20 == 0 )
                             {
-                                if ( segments[ k ].n === Characters[ i ].links[ j ].begin )
+                                c.strokeText( i.toString(), TimeAxisX - 40, CanvasHeight - i * Scale );
+                                c.fillText( i.toString(), TimeAxisX - 40, CanvasHeight - i * Scale );
+                            }
+                        }
+                        else
+                        {
+                            c.strokeText( ( i + Start ).toString(), TimeAxisX - 40, CanvasHeight - i * Scale );
+                            c.fillText( ( i + Start ).toString(), TimeAxisX - 40, CanvasHeight - i * Scale );
+                        }
+                    }
+
+                    let Marks = [];
+                    function IsInMark( segment )
+                    {
+                        for ( let i = 0; i < Marks.length; ++i )
+                        {
+                            if ( segment.x == Marks[ i ].x && segment.y.begin < Marks[ i ].y.end && segment.y.end > Marks[ i ].y.begin )
+                                return true;
+                        }
+                        return false;
+                    }
+
+                    //character colours
+                    for ( let i = 0; i < Characters.length; ++i )
+                    {
+                        switch ( Characters[ i ].name )
+                        {
+                            case 'Rasroth':
+                                c.fillStyle = '#993333';
+                                c.strokeStyle = '#993333'; 
+                                break;
+                            case 'Titus':
+                                c.fillStyle = '#003366';
+                                c.strokeStyle = '#003366'; 
+                                break;
+                            case 'Astraea':
+                                c.fillStyle = '#003300';
+                                c.strokeStyle = '#003300'; 
+                                break;
+                            case 'Lyr':
+                                c.fillStyle = '#cc0000';
+                                c.strokeStyle = '#cc0000'; 
+                                break;
+                            case 'Jude':
+                                c.fillStyle = '#006699';
+                                c.strokeStyle = '#006699'; 
+                                break;
+                            case 'Vega':
+                                c.fillStyle = '#33cc33';
+                                c.strokeStyle = '#33cc33'; 
+                                break;
+                            case 'Erufr':
+                                c.fillStyle = '#ffffff';
+                                c.strokeStyle = '#ffffff'; 
+                                break;
+                        }
+
+                        //segments
+                        const segmentsInRange = Characters[ i ].segments.filter( ( object ) => { return object.begin >= range.begin && object.begin < range.end } );
+                        for ( let j = 0; j < segmentsInRange.length; ++j )
+                        {
+                            let x = getLocationX( Characters[ i ].segments[ j ].place );
+                            while ( IsInMark( { x: x, y: { begin: Characters[ i ].segments[ j ].begin, end: Characters[ i ].segments[ j ].end } } ) )
+                            {
+                                x += 25;
+                            }
+                            c.fillRect( TimeAxisX + 30 + x, CanvasHeight - ( ( segmentsInRange[ j ].end - range.begin ) * Scale ), 20, ( segmentsInRange[ j ].end - segmentsInRange[ j ].begin ) * Scale );
+                            Marks.push( { name: Characters[ i ].name, n: j, x: x, y: { begin: segmentsInRange[ j ].begin, end: segmentsInRange[ j ].end } } );
+                        }
+                        if ( displayConnections && false )
+                        {
+                            let segments = Marks.filter( ( object ) => { return object.name === Characters[ i ].name; } );
+                            for ( let j = 0; j < Characters[ i ].links.length; ++j )
+                            {
+                                c.lineWidth = Characters[ i ].links[ j ].strength;
+                                for ( let k = 0; k < segments.length; ++k )
                                 {
-                                    console.info( CanvasHeight - ( segments[ Characters[ i ].links[ j ].end ].y.begin ) * Scale );
-                                    c.beginPath();
-                                    c.moveTo( TimeAxisX + 40 + segments[ k ].x, CanvasHeight - ( segments[ k ].y.end ) * Scale );
-                                    c.lineTo( TimeAxisX + 40 + segments[ Characters[ i ].links[ j ].end ].x, CanvasHeight - ( segments[ Characters[ i ].links[ j ].end ].y.begin ) * Scale );
-                                    c.stroke();
+                                    if ( segments[ k ].n === Characters[ i ].links[ j ].begin )
+                                    {
+                                        console.info( CanvasHeight - ( segments[ Characters[ i ].links[ j ].end ].y.begin ) * Scale );
+                                        c.beginPath();
+                                        c.moveTo( TimeAxisX + 40 + segments[ k ].x, CanvasHeight - ( segments[ k ].y.end ) * Scale );
+                                        c.lineTo( TimeAxisX + 40 + segments[ Characters[ i ].links[ j ].end ].x, CanvasHeight - ( segments[ Characters[ i ].links[ j ].end ].y.begin ) * Scale );
+                                        c.stroke();
+                                    }
                                 }
                             }
                         }
                     }
+
                 }
 
             }
