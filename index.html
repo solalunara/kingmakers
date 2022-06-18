@@ -476,8 +476,8 @@
                         const segmentsInRange = Characters[ i ].segments.filter( ( object ) => { return object.begin >= range.begin && object.begin < range.end } );
                         for ( let j = 0; j < segmentsInRange.length; ++j )
                         {
-                            let x = getLocationX( Characters[ i ].segments[ j ].place );
-                            while ( IsInMark( { x: x, y: { begin: Characters[ i ].segments[ j ].begin, end: Characters[ i ].segments[ j ].end } } ) )
+                            let x = getLocationX( segmentsInRange[ j ].place );
+                            while ( IsInMark( { x: x, y: { begin: segmentsInRange[ j ].begin, end: segmentsInRange[ j ].end } } ) )
                             {
                                 x += 25;
                             }
